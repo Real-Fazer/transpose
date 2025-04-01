@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Worship Songs</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; max-width: 700px; margin: auto; }
@@ -48,39 +48,31 @@
 
   <script>
     const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M";
-    const sheetName = "Sheet1";
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+
     let songs = {};
     let currentKeyShift = 0;
     let fontSize = 18;
 
-    function parseCSV(csv) {
-      const lines = csv.trim().split(/\\r?\\n/);
-      const headers = lines[0].split(',');
-      const data = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const row = {};
-        let values = lines[i].match(/(\"[^\"]*\"|[^,]+)/g) || [];
-        values = values.map(v => v.replace(/^\"|\"$/g, '').replace(/\\\\n/g, '\\n'));
-        headers.forEach((h, j) => row[h.trim()] = values[j]?.trim() || '');
-        data.push(row);
-      }
-      return data;
-    }
-
     async function fetchSongs() {
       const res = await fetch(sheetUrl);
       const text = await res.text();
-      const parsed = parseCSV(text);
-      parsed.forEach(song => {
-        if (!song.id || !song.title || !song.lyrics) return;
-        songs[song.id] = song;
+      const json = JSON.parse(text.replace(/^[^\\{]+/, '').replace(/\\);$/, ''));
+      const rows = json.table.rows;
+
+      rows.forEach(row => {
+        const id = row.c[0]?.v;
+        const title = row.c[1]?.v;
+        const lyrics = row.c[2]?.v;
+        if (!id || !title || !lyrics) return;
+        songs[id] = { id, title, lyrics };
+
         const option = document.createElement('option');
-        option.value = song.id;
-        option.textContent = song.title;
+        option.value = id;
+        option.textContent = title;
         document.getElementById('songSelect').appendChild(option);
       });
+
       renderSong(Object.keys(songs)[0]);
     }
 
