@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The More I Seek You</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .lyrics {
+      white-space: pre-line;
+      font-size: 18px;
+    }
+    .chord {
+      color: #4A90E2;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>The More I Seek You</h1>
+
+  <div class="controls">
+    <button onclick="transpose(-1)">⬇️ Тональность</button>
+    <button onclick="transpose(1)">⬆️ Тональность</button>
+    <button onclick="resizeText(1)">A+</button>
+    <button onclick="resizeText(-1)">A−</button>
+  </div>
+
+  <div class="lyrics" id="lyrics"></div>
+
+  <script>
+    const song = `
+[C]The more I seek You
+[Am]The more I find You
+[F]The more I find You
+[G]The more I love You
+
+[C]I wanna sit at Your feet
+Drink from the cup in Your hands
+[Am]Lay back against You and breathe
+Feel Your heartbeat
+[F]This love is so deep
+It's more than I can stand
+[G]I melt in Your peace
+It's overwhelming
+`;
+
+    let currentKeyShift = 0;
+    let fontSize = 18;
+
+    const chords = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+
+    function transposeChord(chord, shift) {
+      const idx = chords.findIndex(c => chord === c);
+      if (idx === -1) return chord;
+      const newIndex = (idx + shift + chords.length) % chords.length;
+      return chords[newIndex];
+    }
+
+    function transpose(shift) {
+      currentKeyShift += shift;
+      renderSong();
+    }
+
+    function resizeText(delta) {
+      fontSize += delta;
+      document.querySelector('.lyrics').style.fontSize = fontSize + 'px';
+    }
+
+    function renderSong() {
+      const lines = song.split('\n');
+      const html = lines.map(line => {
+        return line.replace(/\[([^\]]+)\]/g, (match, chord) => {
+          const transposed = transposeChord(chord, currentKeyShift);
+          return `<span class="chord">${transposed}</span>`;
+        });
+      }).join('\n');
+      document.getElementById('lyrics').innerHTML = html;
+    }
+
+    renderSong();
+  </script>
+</body>
+</html>
