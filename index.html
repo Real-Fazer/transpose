@@ -98,7 +98,7 @@
 
     function renderSong(id) {
       const lyrics = songs[id]?.lyrics || '';
-      const html = lyrics.replace(/\\[([^\\]]+)\\]/g, (match, chord) => {
+      const html = lyrics.replace(/\[([^\]]+)\]/g, (match, chord) => {
         const transposed = transposeChord(chord, currentKeyShift);
         return `<span class="chord">${transposed}</span>`;
       });
