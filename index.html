@@ -29,10 +29,9 @@
       margin: 20px 0;
     }
 
-    button, select {
+    button, select, input {
       padding: 10px;
       font-size: 16px;
-      cursor: pointer;
     }
 
     .lyrics {
@@ -50,12 +49,14 @@
   <h1>🎵 Worship Songs</h1>
 
   <div class="song-selector">
-    <label for="songSelect">Choose a song:</label>
+    <input type="text" id="searchInput" placeholder="🔍 Search song..." oninput="filterSongs()" />
     <select id="songSelect" onchange="changeSong()"></select>
   </div>
 
   <div class="controls">
     <button onclick="toggleLyrics()">🎸 Toggle Lyrics</button>
+    <button onclick="resizeText(1)">A+</button>
+    <button onclick="resizeText(-1)">A−</button>
     <label>Transpose to:
       <select id="keySelect" onchange="setKey()">
         <option value="">-</option>
@@ -68,11 +69,13 @@
   <div class="lyrics" id="lyrics">Loading...</div>
 
   <script>
-    const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M"; // ← вставь ID своей таблицы, если другой
+    const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M";
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
     let songs = {};
+    let filteredSongs = {};
     let currentSongId = "";
     let baseKey = "";
+    let fontSize = 18;
     const chords = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
     async function fetchSongs() {
@@ -87,17 +90,36 @@
         const lines = row.c[2]?.v;
         if (!id || !title || !lines) return;
         songs[id] = { id, title, lines };
-
-        const option = document.createElement('option');
-        option.value = id;
-        option.textContent = title;
-        document.getElementById('songSelect').appendChild(option);
       });
 
-      if (Object.keys(songs).length > 0) {
-        document.getElementById('songSelect').value = Object.keys(songs)[0];
+      filteredSongs = { ...songs };
+      populateSelect();
+    }
+
+    function populateSelect() {
+      const select = document.getElementById('songSelect');
+      select.innerHTML = "";
+      Object.values(filteredSongs).forEach(song => {
+        const option = document.createElement('option');
+        option.value = song.id;
+        option.textContent = song.title;
+        select.appendChild(option);
+      });
+      if (select.options.length > 0) {
+        select.value = select.options[0].value;
         changeSong();
       }
+    }
+
+    function filterSongs() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      filteredSongs = {};
+      for (const [id, song] of Object.entries(songs)) {
+        if (song.title.toLowerCase().includes(query)) {
+          filteredSongs[id] = song;
+        }
+      }
+      populateSelect();
     }
 
     function transposeChord(chord, from, to) {
@@ -143,10 +165,16 @@
       }
 
       container.innerHTML = html;
+      container.style.fontSize = fontSize + 'px';
     }
 
     function toggleLyrics() {
       document.getElementById('lyrics').classList.toggle('chords-only');
+    }
+
+    function resizeText(delta) {
+      fontSize += delta;
+      document.getElementById('lyrics').style.fontSize = fontSize + 'px';
     }
 
     fetchSongs();
