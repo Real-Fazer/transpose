@@ -3,42 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Worship Songs</title>
+  <title>Chord Viewer</title>
   <style>
-    body { 
-  font-family: Arial, sans-serif;
-  background: repeating-linear-gradient(0deg, #f9f9f9, #f9f9f9 100%), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'><text x='0' y='70' font-size='40' fill='rgba(0,0,0,0.04)' font-family='Arial'>basta</text></svg>");
-  background-repeat: repeat;
-  background-size: 200px 100px;
-  padding: 20px;
-  max-width: 700px;
-  margin: auto;
-  background-attachment: fixed; }
-    h1 { text-align: center; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'><text x='0' y='70' font-size='40' fill='rgba(0,0,0,0.06)' font-family='Arial'>basta</text></svg>");
+      background-repeat: repeat;
+      background-size: 200px 100px;
+      background-attachment: fixed;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
     .controls, .song-selector {
       display: flex;
       justify-content: center;
+      flex-wrap: wrap;
       gap: 10px;
       margin: 20px 0;
-      flex-wrap: wrap;
     }
-    button, select {
+
+    button, select, input {
       padding: 10px;
       font-size: 16px;
-      cursor: pointer;
     }
+
     .lyrics {
-      white-space: pre-line;
       font-size: 18px;
+      white-space: pre;
+      font-family: monospace;
     }
-    .chord {
-      color: #4A90E2;
-      font-weight: bold;
+
+    .chords-only .text-line {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>🎵 My Worship Songs</h1>
+  <h1>🎵 Worship Songs</h1>
 
   <div class="song-selector">
     <label for="songSelect">Choose a song:</label>
@@ -46,32 +54,38 @@
   </div>
 
   <div class="controls">
-    <button onclick="transpose(-1)">⬇️ Transpose</button>
-    <button onclick="transpose(1)">⬆️ Transpose</button>
-    <button onclick="resizeText(1)">A+</button>
-    <button onclick="resizeText(-1)">A−</button>
+    <button onclick="toggleLyrics()">🎸 Toggle Lyrics</button>
+    <label>Transpose to:
+      <select id="keySelect" onchange="setKey()">
+        <option value="">-</option>
+        <option value="C">C</option><option value="D">D</option><option value="E">E</option>
+        <option value="F">F</option><option value="G">G</option><option value="A">A</option><option value="B">B</option>
+      </select>
+    </label>
   </div>
 
-  <div class="lyrics" id="lyrics">Loading songs...</div>
+  <div class="lyrics" id="lyrics">Loading...</div>
 
   <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M/gviz/tq?tqx=out:json";
+    const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M"; // ← сюда вставь ID своей таблицы при замене
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
     let songs = {};
-    let currentKeyShift = 0;
-    let fontSize = 18;
+    let currentSongId = "";
+    let baseKey = "";
+    const chords = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
     async function fetchSongs() {
       const res = await fetch(sheetUrl);
       const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
+      const json = JSON.parse(text.substring(47).slice(0, -2));
       const rows = json.table.rows;
 
       rows.forEach(row => {
         const id = row.c[0]?.v;
         const title = row.c[1]?.v;
-        const lyrics = row.c[2]?.v;
-        if (!id || !title || !lyrics) return;
-        songs[id] = { id, title, lyrics };
+        const lines = row.c[2]?.v;
+        if (!id || !title || !lines) return;
+        songs[id] = { id, title, lines };
 
         const option = document.createElement('option');
         option.value = id;
@@ -79,38 +93,57 @@
         document.getElementById('songSelect').appendChild(option);
       });
 
-      renderSong(Object.keys(songs)[0]);
+      if (Object.keys(songs).length > 0) {
+        document.getElementById('songSelect').value = Object.keys(songs)[0];
+        changeSong();
+      }
     }
 
-    function transposeChord(chord, shift) {
-      const chords = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+    function transposeChord(chord, from, to) {
+      const i = chords.indexOf(from);
+      const j = chords.indexOf(to);
+      const shift = j - i;
       const idx = chords.indexOf(chord);
       if (idx === -1) return chord;
       return chords[(idx + shift + chords.length) % chords.length];
     }
 
-    function transpose(shift) {
-      currentKeyShift += shift;
-      renderSong(document.getElementById('songSelect').value);
+    function transposeLine(line, toKey) {
+      return line.split(/\s+/).map(ch => {
+        const c = chords.find(cc => ch.startsWith(cc));
+        return c ? transposeChord(c, baseKey, toKey) + ch.slice(c.length) : ch;
+      }).join("  ");
     }
 
-    function resizeText(delta) {
-      fontSize += delta;
-      document.querySelector('.lyrics').style.fontSize = fontSize + 'px';
+    function setKey() {
+      const newKey = document.getElementById('keySelect').value;
+      if (!newKey || !baseKey) return;
+      renderSong(currentSongId, newKey);
     }
 
     function changeSong() {
-      currentKeyShift = 0;
-      renderSong(document.getElementById('songSelect').value);
+      const id = document.getElementById('songSelect').value;
+      currentSongId = id;
+      const lines = songs[id].lines.split(/\\n/);
+      const chordLine = lines[0];
+      const chordRoot = chords.find(c => chordLine.includes(c));
+      baseKey = chordRoot || "C";
+      renderSong(id, baseKey);
     }
 
-    function renderSong(id) {
-      const lyrics = songs[id]?.lyrics || '';
-      const html = lyrics.replace(/\[([^\]]+)\]/g, (match, chord) => {
-        const transposed = transposeChord(chord, currentKeyShift);
-        return `<span class="chord">${transposed}</span>`;
-      });
-      document.getElementById('lyrics').innerHTML = html;
+    function renderSong(id, toKey) {
+      const lines = songs[id].lines.split(/\\n/);
+      const chordsLine = transposeLine(lines[0], toKey);
+      const textLine = lines[1];
+      const container = document.getElementById('lyrics');
+      container.innerHTML = `
+        <div class="chords-line">${chordsLine}</div>
+        <div class="text-line">${textLine}</div>
+      `;
+    }
+
+    function toggleLyrics() {
+      document.getElementById('lyrics').classList.toggle('chords-only');
     }
 
     fetchSongs();
