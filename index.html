@@ -8,9 +8,9 @@
     body {
       font-family: Arial, sans-serif;
       background-color: #f9f9f9;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='100'><text x='0' y='70' font-size='40' fill='rgba(0,0,0,0.06)' font-family='Arial'>basta</text></svg>");
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><text x='0' y='150' font-size='60' fill='rgba(0,0,0,0.03)' font-family='Arial' transform='rotate(-30 100 100)'>basta</text></svg>");
       background-repeat: repeat;
-      background-size: 200px 100px;
+      background-size: 300px 300px;
       background-attachment: fixed;
       padding: 20px;
       max-width: 700px;
@@ -29,9 +29,10 @@
       margin: 20px 0;
     }
 
-    button, select, input {
+    button, select {
       padding: 10px;
       font-size: 16px;
+      cursor: pointer;
     }
 
     .lyrics {
@@ -67,7 +68,7 @@
   <div class="lyrics" id="lyrics">Loading...</div>
 
   <script>
-    const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M"; // ← сюда вставь ID своей таблицы при замене
+    const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M"; // ← вставь ID своей таблицы, если другой
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
     let songs = {};
     let currentSongId = "";
@@ -124,22 +125,24 @@
     function changeSong() {
       const id = document.getElementById('songSelect').value;
       currentSongId = id;
-      const lines = songs[id].lines.split(/\\n/);
-      const chordLine = lines[0];
-      const chordRoot = chords.find(c => chordLine.includes(c));
+      const lines = songs[id].lines.split(/\n/);
+      const chordRoot = chords.find(c => lines[0]?.includes(c));
       baseKey = chordRoot || "C";
       renderSong(id, baseKey);
     }
 
     function renderSong(id, toKey) {
-      const lines = songs[id].lines.split(/\\n/);
-      const chordsLine = transposeLine(lines[0], toKey);
-      const textLine = lines[1];
+      const lines = songs[id].lines.split(/\n/);
       const container = document.getElementById('lyrics');
-      container.innerHTML = `
-        <div class="chords-line">${chordsLine}</div>
-        <div class="text-line">${textLine}</div>
-      `;
+      let html = '';
+
+      for (let i = 0; i < lines.length - 1; i += 2) {
+        const chordsLine = transposeLine(lines[i], toKey);
+        const textLine = lines[i + 1];
+        html += `<div class="chords-line">${chordsLine}</div>\n<div class="text-line">${textLine}</div>\n`;
+      }
+
+      container.innerHTML = html;
     }
 
     function toggleLyrics() {
