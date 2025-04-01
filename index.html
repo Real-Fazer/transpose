@@ -1,27 +1,21 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The More I Seek You</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Worship Songs</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-    }
-    h1 {
-      text-align: center;
-    }
-    .controls {
+    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; max-width: 700px; margin: auto; }
+    h1 { text-align: center; }
+    .controls, .song-selector {
       display: flex;
       justify-content: center;
       gap: 10px;
       margin: 20px 0;
+      flex-wrap: wrap;
     }
-    button {
+    button, select {
       padding: 10px;
       font-size: 16px;
       cursor: pointer;
@@ -37,49 +31,58 @@
   </style>
 </head>
 <body>
-  <h1>The More I Seek You</h1>
+  <h1>🎵 My Worship Songs</h1>
+
+  <div class="song-selector">
+    <label for="songSelect">Choose a song:</label>
+    <select id="songSelect" onchange="changeSong()"></select>
+  </div>
 
   <div class="controls">
-    <button onclick="transpose(-1)">⬇️ Тональность</button>
-    <button onclick="transpose(1)">⬆️ Тональность</button>
+    <button onclick="transpose(-1)">⬇️ Transpose</button>
+    <button onclick="transpose(1)">⬆️ Transpose</button>
     <button onclick="resizeText(1)">A+</button>
     <button onclick="resizeText(-1)">A−</button>
   </div>
 
-  <div class="lyrics" id="lyrics"></div>
+  <div class="lyrics" id="lyrics">Loading songs...</div>
 
   <script>
-    const song = `
-[C]The more I seek You
-[Am]The more I find You
-[F]The more I find You
-[G]The more I love You
-
-[C]I wanna sit at Your feet
-Drink from the cup in Your hands
-[Am]Lay back against You and breathe
-Feel Your heartbeat
-[F]This love is so deep
-It's more than I can stand
-[G]I melt in Your peace
-It's overwhelming
-`;
-
+    const sheetId = "1qiqfSZdQ3GLeZUYqlSog25PTl4eKhnwZTBjKV6yt86M";
+    const sheetName = "Sheet1";
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+    let songs = {};
     let currentKeyShift = 0;
     let fontSize = 18;
 
-    const chords = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+    async function fetchSongs() {
+      const res = await fetch(sheetUrl);
+      const text = await res.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        const song = {};
+        headers.forEach((h, j) => song[h.trim()] = values[j]?.replaceAll('\\n', '\n'));
+        songs[song.id] = song;
+        const option = document.createElement('option');
+        option.value = song.id;
+        option.textContent = song.title;
+        document.getElementById('songSelect').appendChild(option);
+      }
+      renderSong(Object.keys(songs)[0]);
+    }
 
     function transposeChord(chord, shift) {
-      const idx = chords.findIndex(c => chord === c);
+      const chords = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+      const idx = chords.indexOf(chord);
       if (idx === -1) return chord;
-      const newIndex = (idx + shift + chords.length) % chords.length;
-      return chords[newIndex];
+      return chords[(idx + shift + chords.length) % chords.length];
     }
 
     function transpose(shift) {
       currentKeyShift += shift;
-      renderSong();
+      renderSong(document.getElementById('songSelect').value);
     }
 
     function resizeText(delta) {
@@ -87,18 +90,21 @@ It's overwhelming
       document.querySelector('.lyrics').style.fontSize = fontSize + 'px';
     }
 
-    function renderSong() {
-      const lines = song.split('\n');
-      const html = lines.map(line => {
-        return line.replace(/\[([^\]]+)\]/g, (match, chord) => {
-          const transposed = transposeChord(chord, currentKeyShift);
-          return `<span class="chord">${transposed}</span>`;
-        });
-      }).join('\n');
+    function changeSong() {
+      currentKeyShift = 0;
+      renderSong(document.getElementById('songSelect').value);
+    }
+
+    function renderSong(id) {
+      const lyrics = songs[id]?.lyrics || '';
+      const html = lyrics.replace(/\[([^\]]+)\]/g, (match, chord) => {
+        const transposed = transposeChord(chord, currentKeyShift);
+        return `<span class="chord">${transposed}</span>`;
+      });
       document.getElementById('lyrics').innerHTML = html;
     }
 
-    renderSong();
+    fetchSongs();
   </script>
 </body>
 </html>
