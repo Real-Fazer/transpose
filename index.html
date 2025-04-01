@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,21 +54,33 @@
     let currentKeyShift = 0;
     let fontSize = 18;
 
+    function parseCSV(csv) {
+      const lines = csv.trim().split(/\\r?\\n/);
+      const headers = lines[0].split(',');
+      const data = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = {};
+        let values = lines[i].match(/(\"[^\"]*\"|[^,]+)/g) || [];
+        values = values.map(v => v.replace(/^\"|\"$/g, '').replace(/\\\\n/g, '\\n'));
+        headers.forEach((h, j) => row[h.trim()] = values[j]?.trim() || '');
+        data.push(row);
+      }
+      return data;
+    }
+
     async function fetchSongs() {
       const res = await fetch(sheetUrl);
       const text = await res.text();
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',');
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        const song = {};
-        headers.forEach((h, j) => song[h.trim()] = values[j]?.replaceAll('\\n', '\n'));
+      const parsed = parseCSV(text);
+      parsed.forEach(song => {
+        if (!song.id || !song.title || !song.lyrics) return;
         songs[song.id] = song;
         const option = document.createElement('option');
         option.value = song.id;
         option.textContent = song.title;
         document.getElementById('songSelect').appendChild(option);
-      }
+      });
       renderSong(Object.keys(songs)[0]);
     }
 
@@ -97,7 +108,7 @@
 
     function renderSong(id) {
       const lyrics = songs[id]?.lyrics || '';
-      const html = lyrics.replace(/\[([^\]]+)\]/g, (match, chord) => {
+      const html = lyrics.replace(/\\[([^\\]]+)\\]/g, (match, chord) => {
         const transposed = transposeChord(chord, currentKeyShift);
         return `<span class="chord">${transposed}</span>`;
       });
